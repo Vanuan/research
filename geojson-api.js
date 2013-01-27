@@ -15,7 +15,8 @@ function GrabData(bounds, res){
     } else {
       logger.info('connected');
     }
-    var moisql = 'SELECT ST_AsGeoJSON(way) as ways from '
+    var precision = '2'; // max decimal digits
+    var moisql = 'SELECT ST_AsGeoJSON((way), ' + precision + ') as ways, highway from '
                   + prefix + '_line;'
 
     client.query(moisql, function(err, result){
@@ -28,7 +29,7 @@ function GrabData(bounds, res){
   
       for(i=0; i<result.rows.length; i++){
         var ways = result.rows[i].ways;
-        logger.info('row '+ i + ' ' + ways)
+        logger.debug('row '+ i + ' ' + ways)
         featureCollection.features[i] = JSON.parse(ways);
      }
 
