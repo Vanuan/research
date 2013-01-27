@@ -1,0 +1,2 @@
+exports.connectionString = "tcp://postgres:password@localhost/db_name";
+exports.table_prefix = 'planet_osm';
