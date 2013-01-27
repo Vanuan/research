@@ -2,31 +2,33 @@ var pg = require('pg');
 var settings = require('./settings.js');
 var conString = settings.connectionString;
 var prefix = settings.table_prefix;
-console.log('settings: ', settings)
+var logger = require('./logger');
+logger.debugLevel = logger.INFO;
+logger.info('settings: ', settings)
 
 function GrabData(bounds, res){
   var client = new pg.Client(conString);
-  console.log('client created');
+  logger.info('client created');
   client.connect(function(err){
     if (err) {
-      console.log('err:' + err);
+      logger.error('err:' + err);
     } else {
-      console.info('connected');
+      logger.info('connected');
     }
     var moisql = 'SELECT ST_AsGeoJSON(way) as ways from '
                   + prefix + '_line;'
 
     client.query(moisql, function(err, result){
       if (err) {
-        console.log('err:' + err);
+        logger.error('err:' + err);
       } else {
-        console.info('query successfull');
+        logger.info('query successfull');
       }
       var featureCollection = new FeatureCollection();
   
       for(i=0; i<result.rows.length; i++){
         var ways = result.rows[i].ways;
-        // console.info('row '+ i + ': %o', ways)
+        logger.info('row '+ i + ' ' + ways)
         featureCollection.features[i] = JSON.parse(ways);
      }
 
@@ -45,8 +47,7 @@ function FeatureCollection(){
 
 var res = {};
 res.send = function(data) {
-  //console.log(data)
-  console.log("%d features in database", data.features.length)
+  logger.info(data.features.length + " features in database")
   process.exit(code=0);
 };
 GrabData([1,1], res);
