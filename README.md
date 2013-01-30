@@ -4,9 +4,10 @@ Install npm:
 
 sudo apt-get install npm
 
-Install pg:
+Install dependecies:
 
-npm install pg
+* npm install pg
+* npm install squel
 
 Setup a PostGIS database with OSM data (not covered in this README)
 
