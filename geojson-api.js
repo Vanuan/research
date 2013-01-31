@@ -61,8 +61,9 @@ function as_geo_json(query, precision, fields) {
 }
 
 function execute_query(prefix, tags, bounds, client, on_result) {
-  var bbox = bbox_to_projection(bounds, 'EPSG:900913');
-  var query = prepare_polygon_query(prefix, tags, bbox)
+  var bbox = bbox_to_projection(bounds.bounds, 'EPSG:900913');
+  var query = prepare_polygon_query(prefix, tags, bbox);
+  var intscalefactor = 10000;
   client.query(query, function(err, result){
     if (err) {
       logger.error('err:' + err);
@@ -83,8 +84,10 @@ function execute_query(prefix, tags, bounds, client, on_result) {
       featureCollection.features[i] = JSON.parse(way);
       featureCollection.features[i].properties = properties;
     }
-    featureCollection.bbox = bounds;
-    on_result.send(featureCollection);
+    featureCollection.bbox = bounds.bounds;
+    featureCollection.granularity = intscalefactor;
+
+    on_result.send(featureCollection, bounds.z, bounds.x, bounds.y);
   });
 }
 
@@ -104,7 +107,7 @@ function bbox_to_projection(bbox, projection) {
 function bbox_by_tile(z, x, y, projection) {
   coord1 = coords_by_tile(z, x, y);
   coord2 = coords_by_tile(z, x+1, y+1);
-  bbox = [coord1[0], coord1[1], coord2[0], coord2[1]];
+  bbox = [coord1[0], coord2[1], coord2[0], coord1[1]];
   logger.debug(z);
   logger.debug(x);
   logger.debug(y);
@@ -125,7 +128,11 @@ function get_bounds(tile_id) {
     var z = parseInt(tile_id.split('/')[0]);
     var x = parseInt(tile_id.split('/')[1]);
     var y = parseInt(tile_id.split('/')[2]);
-    bbox = bbox_by_tile(z, x, y, "EPSG:900913")
+    var bbox = {};
+    bbox.bounds = bbox_by_tile(z, x, y, "EPSG:900913");
+    bbox.z = z;
+    bbox.x = x;
+    bbox.y = y;
     logger.info(z + '/' + x + '/' + y);
     return bbox;
 }
@@ -148,11 +155,13 @@ http.createServer(
   function (request, response)
   {
     var res = {};
-    res.send = function(data) {
+    res.send = function(data, z, x, y) {
       logger.info(data.features.length + " features in database");
       // logger.debug(data);
       response.writeHead(200, {'Content-Type': 'application/javascript'});
-      response.end('onKothicDataResponse(' +  JSON.stringify(data) + ');');
+      response.end('onKothicDataResponse(' +  JSON.stringify(data) +
+                   ',' + z + ',' + x + ',' + y +
+                   ');');
     };
     // /vtile/{z}/{x}/{y}.js
     var regex = /.*vtile\/(\d+\/\d+\/\d+).*/
