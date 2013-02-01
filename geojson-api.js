@@ -24,27 +24,23 @@ function pixel_size_at_zoom(z, l) {
 }
 
 
-function prepare_polygon_query(table_prefix, tags, bounds) {
+function prepare_polygon_query(table_prefix, tags, bounds, zoom) {
   var table = table_prefix + '_polygon';
   var precision = '2'; // max decimal digits
-//  var query = 'SELECT ST_AsGeoJSON((way), ' + precision + ') as ways,'
-//               + tags.join() +
-//               ' from ' + table + ';';
   var adp = 'true'; // ??? tags? filter?
   var names = tags.join();
   var vec = 'vec';
   var geomcolumn = 'way';
-  var zoom = 10;
-  var pxtolerance = 10;
+  var pxtolerance = 1.8;
 
   var bbox = "SetSRID('BOX3D(" + bounds[0] + " " + bounds[1] + "," +
                                  bounds[2] + " " + bounds[3] + ")'::box3d,900913)";
-  var min_visible_area = Math.pow(pixel_size_at_zoom(zoom, pxtolerance), 2)/pxtolerance
+  var min_visible_area = Math.pow(pixel_size_at_zoom(zoom, pxtolerance), 2)/pxtolerance;
  
-  var buffer_way = 'ST_Buffer(way, ' + pixel_size_at_zoom(zoom, pxtolerance) + ')';
+  var buffer_way = 'ST_Buffer(way, ' + pixel_size_at_zoom(zoom+1, pxtolerance) + ')';
  
-  var q = squel.select();
   var inside_bounds_and_visible = squel.expr().and(adp).and('way && ' + bbox).and('way_area > ' + min_visible_area);
+  var q = squel.select();
   q = q.field(buffer_way, geomcolumn).field(names).from(table);
   q = q.where(inside_bounds_and_visible);
   q = as_geo_json(q.toString(), precision, tags);
@@ -62,7 +58,7 @@ function as_geo_json(query, precision, fields) {
 
 function execute_query(prefix, tags, bounds, client, on_result) {
   var bbox = bbox_to_projection(bounds.bounds, 'EPSG:900913');
-  var query = prepare_polygon_query(prefix, tags, bbox);
+  var query = prepare_polygon_query(prefix, tags, bbox, bounds.z);
   var intscalefactor = 10000;
   client.query(query, function(err, result){
     if (err) {
@@ -140,8 +136,7 @@ function get_bounds(tile_id) {
 function GrabData(tile_id, res){
   var bounds = get_bounds(tile_id);
   logger.info('client created');
-//    execute_query(prefix, ['highway'], bounds, client, res);
-  execute_query(prefix, ['amenity', 'name', 'building'], bounds, client, res);
+  execute_query(prefix, ['"addr:housenumber"', 'amenity', 'name', 'building'], bounds, client, res);
 }
 
 function FeatureCollection(){
@@ -158,7 +153,7 @@ http.createServer(
     res.send = function(data, z, x, y) {
       logger.info(data.features.length + " features in database");
       // logger.debug(data);
-      response.writeHead(200, {'Content-Type': 'application/javascript'});
+      response.writeHead(200, {'Content-Type': 'application/javascript; charset=utf-8'});
       response.end('onKothicDataResponse(' +  JSON.stringify(data) +
                    ',' + z + ',' + x + ',' + y +
                    ');');
