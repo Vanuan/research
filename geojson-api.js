@@ -237,7 +237,7 @@ function get_bounds(tile_id) {
 
 function GrabData(tile_id, res){
   var bounds = get_bounds(tile_id);
-  var tags =['"addr:housenumber"', 'amenity', 'name', 'building', 'landuse'];
+  var tags =['landuse', 'amenity', '"addr:housenumber"', 'name', 'building'];
   execute_query(prefix, tags, bounds, client, res);
 }
 
@@ -245,8 +245,14 @@ function FeatureCollection(){
   this.features = new Array();
 }
 
+function sendResponse(headers, response, responseBuffer) {
+  response.writeHead(200, headers);
+  response.end(responseBuffer);
+}
+
 
 var http = require('http');
+var zlib = require('zlib');
  
 http.createServer(
   function (request, response)
@@ -255,10 +261,34 @@ http.createServer(
     res.send = function(data, z, x, y) {
       logger.info(data.features.length + " features in database");
       // logger.debug(data);
-      response.writeHead(200, {'Content-Type': 'application/javascript; charset=utf-8'});
-      response.end('onKothicDataResponse(' +  JSON.stringify(data) +
+      var responseString = 'onKothicDataResponse(' +  JSON.stringify(data) +
                    ',' + z + ',' + x + ',' + y +
-                   ');');
+                   ');';
+      var headers = {'Content-Type': 'application/javascript; charset=utf-8'}
+      var acceptEncoding = request.headers['accept-encoding'];
+      if (!acceptEncoding) {
+        acceptEncoding = '';
+      }
+      // Note: this is not a conformant accept-encoding parser.
+      // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3
+      if (acceptEncoding.match(/\bdeflate\b/)) {
+        headers['content-encoding'] = 'deflate';
+        response.writeHead(200, headers);
+        zlib.deflate(responseString, function(err, responseBuffer) {
+          if (!err) {
+            sendResponse(headers, response, responseBuffer);
+          }
+        });
+      } else if (acceptEncoding.match(/\bgzip\b/)) {
+        headers['content-encoding'] = 'gzip';
+        zlib.gzip(responseString, function(err, responseBuffer) {
+          if (!err) {
+            sendResponse(headers, response, responseBuffer);
+          }
+        });
+      } else {
+        sendResponse(headers, response, responseString);
+      }
     };
     // /vtile/{z}/{x}/{y}.js
     var regex = /.*vtile\/(\d+\/\d+\/\d+).*/
