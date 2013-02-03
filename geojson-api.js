@@ -5,7 +5,7 @@ var conString = settings.connectionString;
 var prefix = settings.table_prefix;
 var logger = require('./logger');
 var proj4 = require('proj4js');
-logger.debugLevel = logger.DEBUG;
+logger.debugLevel = logger.WARN;
 logger.info('settings: ', settings)
 
 var client = new pg.Client(conString);
@@ -41,13 +41,17 @@ function prepare_polygon_query(table_prefix, tags, bounds, zoom, intscalefactor)
   var min_visible_area = Math.pow(pixel_size_at_zoom(zoom, pxtolerance), 2)/pxtolerance;
  
   var buffer_way = 'ST_Buffer(way, ' + pixel_size_at_zoom(zoom+1, pxtolerance) + ')';
- 
   var inside_bounds_and_visible = squel.expr().and(adp).and('way && ' + bbox).and('way_area > ' + min_visible_area);
   var q = squel.select();
   q = q.field(buffer_way, geomcolumn).field(names).from(table);
   q = q.where(inside_bounds_and_visible);
   var inter = intersection(bbox);
   var trans = transcale(inter, bounds, intscalefactor);
+  var skip_without_tags = squel.expr();
+  for (var tag in tags) {
+    skip_without_tags = skip_without_tags.or(tags[tag] + " != ''");
+  }
+  q = q.where(skip_without_tags);
   q = as_geo_json(trans, q.toString(), precision, tags);
   logger.debug(q);
   return q;
@@ -94,7 +98,9 @@ function execute_query(prefix, tags, bounds, client, on_result) {
       delete result.rows[i].way
       var properties = {};
       for(property in cols) {
-        properties[property] = cols[property];
+        if (cols[property]) {
+          properties[property] = cols[property];
+        }
       }
       // logger.debug('row '+ i + ' ' + way)
       featureCollection.features[i] = JSON.parse(way);
