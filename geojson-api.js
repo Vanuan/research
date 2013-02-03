@@ -5,7 +5,7 @@ var conString = settings.connectionString;
 var prefix = settings.table_prefix;
 var logger = require('./logger');
 var proj4 = require('proj4js');
-logger.debugLevel = logger.WARN;
+logger.debugLevel = logger.DEBUG;
 logger.info('settings: ', settings)
 
 var client = new pg.Client(conString);
@@ -46,27 +46,43 @@ function prepare_polygon_query(table_prefix, tags, bounds, zoom, intscalefactor)
   q = q.field(buffer_way, geomcolumn).field(names).from(table);
   q = q.where(inside_bounds_and_visible);
   var inter = intersection(bbox);
-  var trans = transcale(inter, bounds, intscalefactor);
+  var point = point_on();
+  var trans1 = transcale(inter, bounds, intscalefactor);
+  var trans2 = transcale(point, bounds, intscalefactor);
   var skip_without_tags = squel.expr();
   for (var tag in tags) {
     skip_without_tags = skip_without_tags.or(tags[tag] + " != ''");
   }
   q = q.where(skip_without_tags);
-  q = as_geo_json(trans, q.toString(), precision, tags);
+  var union = squel.select().field('ST_Union(way) as way').field(names);
+  union = union.from('(' + q.toString() + ') p').group(names);
+  var simplify = squel.select().field("(ST_Dump(ST_Multi(ST_SimplifyPreserveTopology(ST_Buffer(way,-2),2)))).geom as way").field(names);
+  simplify = simplify.from('(' + union.toString() + ') as p');
+  q = as_geo_json(trans1, trans2, simplify.toString(), precision, tags);
   logger.debug(q);
   return q;
 }
 
-function as_geo_json(field, from_query, precision, fields) {
+function as_geo_json(field1, field2, from_query, precision, fields) {
   var q = squel.select();
-  q = q.field('ST_AsGeoJSON((' + field + '), ' + precision + ') as way');
+  q = q.field(as_geo_json_field(field1, precision, 'way'));
+  q = q.field(as_geo_json_field(field2, precision, 'reprpoint'));
   q = q.field(fields.join());
   q = q.from('(' + from_query + ') p');
   return q.toString();
 }
 
+function as_geo_json_field(field, precision, as) {
+  return 'ST_AsGeoJSON((' + field + '), ' + precision + ') as ' + as;
+}
+
 function intersection(bbox) {
   var intersection = ('ST_Intersection(way,' + bbox + ')');
+  return intersection;
+}
+
+function point_on() {
+  var intersection = 'ST_PointOnSurface(way)';
   return intersection;
 }
 
@@ -82,7 +98,7 @@ function transcale(to_scale, bbox_p, intscalefactor) {
 
 function execute_query(prefix, tags, bounds, client, on_result) {
   var bbox = bbox_to_projection(bounds.bounds, 'EPSG:900913');
-  var intscalefactor = 10000;
+  var intscalefactor = 100;
   var query = prepare_polygon_query(prefix, tags, bbox, bounds.z, intscalefactor);
   client.query(query, function(err, result){
     if (err) {
@@ -94,8 +110,13 @@ function execute_query(prefix, tags, bounds, client, on_result) {
     var featureCollection = new FeatureCollection();
     for(var i = 0; i < result.rows.length; i++){
       var cols = result.rows[i];
-      var way = result.rows[i].way;
-      delete result.rows[i].way
+      var way = JSON.parse(result.rows[i].way);
+      var reprpoint = result.rows[i].reprpoint;
+      delete result.rows[i].way;
+      delete result.rows[i].reprpoint;
+      if (way.type == 'GeometryCollection') {
+        continue;
+      }
       var properties = {};
       for(property in cols) {
         if (cols[property]) {
@@ -103,8 +124,13 @@ function execute_query(prefix, tags, bounds, client, on_result) {
         }
       }
       // logger.debug('row '+ i + ' ' + way)
-      featureCollection.features[i] = JSON.parse(way);
-      featureCollection.features[i].properties = properties;
+      var feature = way;
+      logger.debug(way.coordinates);
+      feature.properties = properties;
+      if (reprpoint) {
+        feature.reprpoint = JSON.parse(reprpoint)["coordinates"];
+      }
+      featureCollection.features.push(feature);
     }
     featureCollection.bbox = bounds.bounds;
     featureCollection.granularity = intscalefactor;
@@ -211,8 +237,8 @@ function get_bounds(tile_id) {
 
 function GrabData(tile_id, res){
   var bounds = get_bounds(tile_id);
-  logger.info('client created');
-  execute_query(prefix, ['"addr:housenumber"', 'amenity', 'name', 'building'], bounds, client, res);
+  var tags =['"addr:housenumber"', 'amenity', 'name', 'building', 'landuse'];
+  execute_query(prefix, tags, bounds, client, res);
 }
 
 function FeatureCollection(){
