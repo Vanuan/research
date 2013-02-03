@@ -4,6 +4,7 @@ var settings = require('./settings.js');
 var conString = settings.connectionString;
 var prefix = settings.table_prefix;
 var logger = require('./logger');
+var proj4 = require('proj4js');
 logger.debugLevel = logger.DEBUG;
 logger.info('settings: ', settings)
 
@@ -24,7 +25,7 @@ function pixel_size_at_zoom(z, l) {
 }
 
 
-function prepare_polygon_query(table_prefix, tags, bounds, zoom) {
+function prepare_polygon_query(table_prefix, tags, bounds, zoom, intscalefactor) {
   var table = table_prefix + '_polygon';
   var precision = '2'; // max decimal digits
   var adp = 'true'; // ??? tags? filter?
@@ -33,6 +34,8 @@ function prepare_polygon_query(table_prefix, tags, bounds, zoom) {
   var geomcolumn = 'way';
   var pxtolerance = 1.8;
 
+
+  logger.debug(bounds)
   var bbox = "SetSRID('BOX3D(" + bounds[0] + " " + bounds[1] + "," +
                                  bounds[2] + " " + bounds[3] + ")'::box3d,900913)";
   var min_visible_area = Math.pow(pixel_size_at_zoom(zoom, pxtolerance), 2)/pxtolerance;
@@ -43,23 +46,40 @@ function prepare_polygon_query(table_prefix, tags, bounds, zoom) {
   var q = squel.select();
   q = q.field(buffer_way, geomcolumn).field(names).from(table);
   q = q.where(inside_bounds_and_visible);
-  q = as_geo_json(q.toString(), precision, tags);
+  var inter = intersection(bbox);
+  var trans = transcale(inter, bounds, intscalefactor);
+  q = as_geo_json(trans, q.toString(), precision, tags);
   logger.debug(q);
   return q;
 }
 
-function as_geo_json(query, precision, fields) {
+function as_geo_json(field, from_query, precision, fields) {
   var q = squel.select();
-  q = q.field('ST_AsGeoJSON((way), ' + precision + ') as way');
+  q = q.field('ST_AsGeoJSON((' + field + '), ' + precision + ') as way');
   q = q.field(fields.join());
-  q = q.from('(' + query + ') p')
+  q = q.from('(' + from_query + ') p');
   return q.toString();
+}
+
+function intersection(bbox) {
+  var intersection = ('ST_Intersection(way,' + bbox + ')');
+  return intersection;
+}
+
+exports.transcale = transcale;
+function transcale(to_scale, bbox_p, intscalefactor) {
+  var rhr = 'ST_ForceRHR(' + to_scale + ')';
+  var transcale = 'ST_TransScale(' + rhr + ',' +
+                     -bbox_p[0] + ',' + -bbox_p[1] + ',' +
+                     intscalefactor/(bbox_p[2]-bbox_p[0]) + ',' +
+                     intscalefactor/(bbox_p[3]-bbox_p[1]) + ')';
+  return transcale;
 }
 
 function execute_query(prefix, tags, bounds, client, on_result) {
   var bbox = bbox_to_projection(bounds.bounds, 'EPSG:900913');
-  var query = prepare_polygon_query(prefix, tags, bbox, bounds.z);
   var intscalefactor = 10000;
+  var query = prepare_polygon_query(prefix, tags, bbox, bounds.z, intscalefactor);
   client.query(query, function(err, result){
     if (err) {
       logger.error('err:' + err);
@@ -92,18 +112,22 @@ function bbox_to_projection(bbox, projection) {
   if (projection != 'EPSG:900913') {
     logger.error('not supported projection');
   }
-  var proj4 = require('proj4js');
   proj = new proj4.Proj("EPSG:900913");
   upper_left = proj4.transform(proj4.WGS84, proj, new proj4.Point([bbox[0], bbox[3]]));
-  bottom_right = proj4.transform(proj4.WGS84, proj, new proj4.Point(bbox[1], bbox[2]));
-  return [upper_left.x, bottom_right.x, bottom_right.y, upper_left.y];
+  bottom_right = proj4.transform(proj4.WGS84, proj, new proj4.Point(bbox[2], bbox[1]));
+
+  return [upper_left.x,
+          bottom_right.y,
+          bottom_right.x,
+          upper_left.y
+];
 }
 
 
 function bbox_by_tile(z, x, y, projection) {
-  coord1 = coords_by_tile(z, x, y);
-  coord2 = coords_by_tile(z, x+1, y+1);
-  bbox = [coord1[0], coord2[1], coord2[0], coord1[1]];
+  var coord1 = coords_by_tile(z, x, y);
+  var coord2 = coords_by_tile(z, x+1, y+1);
+  var bbox = [coord1[0], coord2[1], coord2[0], coord1[1]];
   logger.debug(z);
   logger.debug(x);
   logger.debug(y);
@@ -111,15 +135,61 @@ function bbox_by_tile(z, x, y, projection) {
   return bbox;
 }
 
+function sinh (arg) {
+  return (Math.exp(arg) - Math.exp(-arg)) / 2;
+}
+
+function rad_to_deg(rad) {
+  return rad * 180.0 / Math.PI;
+}
+
+exports.coords_by_tile = coords_by_tile;
+/**
+ * returns WSG84 coordinates by the tile number
+ */
 function coords_by_tile(z, x, y) {
   var longitude = (x/Math.pow(2,z)*360-180);
   logger.debug(longitude);
-  var n=Math.PI-2*Math.PI*y/Math.pow(2,z);
-  var latitude = (180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n))));
+  var n = Math.pow(2, z);
+  n = Math.PI * (1 - (2 * y / n));
+  var latitude = rad_to_deg(Math.atan(sinh(n)) );
   logger.debug(latitude);
-  return [longitude, latitude]
+  return [round_to(longitude, 10), round_to(latitude, 10)]
 }
 
+
+function lat_coord_by_tile(zoom, tile_number) {
+  var min = -180;
+  var max = 180;
+  return coord_by_tile(zoom, tile_number, min, max);
+}
+function long_coord_by_tile(zoom, tile_number) {
+  var min = 85.0511287798;  // arctan(sinh(π))
+  var max = -85.0511287798;
+  return coord_by_tile(zoom, tile_number, min, max);
+}
+
+function coord_by_tile(zoom, tile_number, min, max) {
+  var count = Math.pow(2, zoom);
+  return tile_number / count * (max-min) + min;
+}
+
+exports.google_coords_by_tile = google_coords_by_tile;
+/**
+ * returns EPSG:3857-projected coordinates (Spherical Mercator)
+ * by the tile number
+ */
+function google_coords_by_tile(z, x, y) {
+  var latitude = lat_coord_by_tile(z, x);
+  var longitude = long_coord_by_tile(z, y);
+  return [latitude, longitude];
+}
+
+function round_to(num, precision) {
+  return Math.round(num*Math.pow(10, precision))/Math.pow(10, precision);
+}
+
+exports.get_bounds = get_bounds;
 function get_bounds(tile_id) {
     var z = parseInt(tile_id.split('/')[0]);
     var x = parseInt(tile_id.split('/')[1]);
