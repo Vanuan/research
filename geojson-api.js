@@ -237,7 +237,7 @@ function get_bounds(tile_id) {
 
 function GrabData(tile_id, res){
   var bounds = get_bounds(tile_id);
-  var tags =['landuse', 'amenity', '"addr:housenumber"', 'name', 'building'];
+  var tags =['"addr:housenumber"', 'name', 'building', 'amenity'];
   execute_query(prefix, tags, bounds, client, res);
 }
 
@@ -253,10 +253,13 @@ function sendResponse(headers, response, responseBuffer) {
 
 var http = require('http');
 var zlib = require('zlib');
+
+
  
-http.createServer(
-  function (request, response)
-  {
+var serve_geo_json = function (request, response) {
+    var headers = {'Content-Type': 'application/javascript; charset=utf-8',
+                   'Cache-Control': 'public',
+                   'Last-Modified': new Date('2011','01','01').toUTCString()}
     var res = {};
     res.send = function(data, z, x, y) {
       logger.info(data.features.length + " features in database");
@@ -264,7 +267,6 @@ http.createServer(
       var responseString = 'onKothicDataResponse(' +  JSON.stringify(data) +
                    ',' + z + ',' + x + ',' + y +
                    ');';
-      var headers = {'Content-Type': 'application/javascript; charset=utf-8'}
       var acceptEncoding = request.headers['accept-encoding'];
       if (!acceptEncoding) {
         acceptEncoding = '';
@@ -296,11 +298,22 @@ http.createServer(
     logger.debug(tile_id);
     if (tile_id && tile_id.length == 2) {
       tile_id = tile_id[1];
-      GrabData(tile_id, res);
+      var allow304 = request.headers['If-Modified-Since'];
+      allow304 = Date.parse(allow304);
+      if (allow304 > (new Date('2011','01','01'))) {
+        response.writeHead(304, null);
+        response.end('');
+        return;
+      } else {
+        GrabData(tile_id, res);
+      }
     } else {
       response.writeHead(200, {'Content-Type': 'application/javascript'});
       response.end('{error}');
     }
-  }
-).listen(8000);
+  };
+var connect = require('connect');
+var app = connect().use(connect.static(__dirname + '/kothic-js'))
+                   .use(serve_geo_json);
+connect.createServer(app).listen(8000);
 logger.info('Listenning...')
