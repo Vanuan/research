@@ -5,10 +5,12 @@ try {
 }
 catch(e) {
   var settings = {"connectionString":
-                  "tcp://postgres@localhost:" +
+                  "tcp://" + process.env.OPENSHIFT_POSTGRESQL_DB_USERNAME +
+                  ":" + process.env.OPENSHIFT_POSTGRESQL_DB_PASSWORD +
+                  "@" + process.env.OPENSHIFT_POSTGRESQL_DB_HOST + ":" +
                   process.env.OPENSHIFT_POSTGRESQL_DB_PORT + "/osm1",
                   "table_prefix": "planet_osm"
-                 }
+                 };
 }
 var conString = settings.connectionString;
 var prefix = settings.table_prefix;
