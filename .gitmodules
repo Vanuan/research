@@ -1,0 +1,3 @@
+[submodule "kothic-js"]
+	path = kothic-js
+	url = git://github.com/Vanuan/kothic-js.git
