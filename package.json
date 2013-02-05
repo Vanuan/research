@@ -1,0 +1,44 @@
+{
+  "name": "osm-js",
+  "preferGlobal": false,
+  "version": "0.0.0",
+  "author": "Vanuan <vanuan@gmail.com>",
+  "description": "a simple geojson-api server",
+  "contributors": [ 
+    {
+      "name": "Vanuan",
+      "email": "vanuan@gmail.com"
+    } 
+  ],
+  "scripts": {
+    "start": "node ./app.js",
+    "test": "mocha",
+    "predeploy": "echo This will be run before deploying the app",
+    "postdeploy": "echo This will be run after deploying the app"
+  },
+  "main": "./geojson-api",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Vanuan/research.git"
+  },
+  "keywords": [
+    "osm",
+    "geo",
+    "maps"
+  ],
+  "dependencies" : {
+    "pg"           :  "*",
+    "squel"        :  "*",
+    "proj4js"      :  "*",
+    "proj4js-defs" :  "*",
+  },
+  "analyze": false,
+  "devDependencies": {
+    "mocha"    :  "*",
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=0.6"
+  }
+}
+
