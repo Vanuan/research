@@ -7,7 +7,7 @@ try {
   var settings = require('./settings');
   var port = settings.port;
   var ip = settings.ip;
-} except {
+} catch(e) {
   var port = process.env.OPENSHIFT_INTERNAL_PORT;
   var ip = process.env.OPENSHIFT_INTERNAL_IP;
 }
