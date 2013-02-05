@@ -3,4 +3,13 @@ var logger = require('./logger');
 var connect = require('connect');
 var app = connect().use(connect.static(__dirname + '/kothic-js'))
                    .use(geo_json.serve_geo_json);
-connect.createServer(app).listen(8000);
+try {
+  var settings = require('./settings');
+  var port = settings.port;
+  var ip = settings.ip;
+} except {
+  var port = process.env.OPENSHIFT_INTERNAL_PORT;
+  var ip = process.env.OPENSHIFT_INTERNAL_IP;
+}
+
+connect.createServer(app).listen(port, ip);
