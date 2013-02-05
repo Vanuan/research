@@ -1,6 +1,15 @@
 var pg = require('pg');
 var squel = require('squel');
-var settings = require('./settings.js');
+try {
+  var settings = require('./settings.js');
+}
+catch(e) {
+  var settings = {"connectionString":
+                  "tcp://postgres@localhost:" +
+                  process.env.OPENSHIFT_POSTGRESQL_DB_PORT + "/osm1",
+                  "table_prefix": "planet_osm"
+                 }
+}
 var conString = settings.connectionString;
 var prefix = settings.table_prefix;
 var logger = require('./logger');
