@@ -255,7 +255,6 @@ var http = require('http');
 var zlib = require('zlib');
 
 
- 
 var serve_geo_json = function (request, response) {
     var headers = {'Content-Type': 'application/javascript; charset=utf-8',
                    'Cache-Control': 'public',
@@ -312,8 +311,5 @@ var serve_geo_json = function (request, response) {
       response.end('{error}');
     }
   };
-var connect = require('connect');
-var app = connect().use(connect.static(__dirname + '/kothic-js'))
-                   .use(serve_geo_json);
-connect.createServer(app).listen(8000);
-logger.info('Listenning...')
+
+exports.serve_geo_json = serve_geo_json;
