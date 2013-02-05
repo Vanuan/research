@@ -30,11 +30,11 @@
     "pg"           :  "*",
     "squel"        :  "*",
     "proj4js"      :  "*",
-    "proj4js-defs" :  "*",
+    "proj4js-defs" :  "*"
   },
   "analyze": false,
   "devDependencies": {
-    "mocha"    :  "*",
+    "mocha"    :  "*"
   },
   "license": "MIT",
   "engines": {
