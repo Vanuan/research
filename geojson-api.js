@@ -1,4 +1,4 @@
-var pg = require('pg');
+var anydb = require('any-db');
 var squel = require('squel');
 try {
   var settings = require('./settings.js');
@@ -19,14 +19,8 @@ var proj4 = require('proj4js');
 logger.debugLevel = logger.DEBUG;
 logger.info('settings: ', settings)
 
-var client = new pg.Client(conString);
-client.connect(function(err){
-  if (err) {
-    logger.error('err:' + err);
-  } else {
-    logger.info('connected');
-  }
-});
+var client = anydb.createPool(conString.replace('tcp', 'postgres'),
+                              {min: 2, max: 10});
 
 function pixel_size_at_zoom(z, l) {
   /*

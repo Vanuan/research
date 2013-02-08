@@ -6,10 +6,7 @@ sudo apt-get install npm
 
 Install dependencies:
 
-* npm install pg
-* npm install squel
-* npm install proj4js
-* npm install proj4js-defs
+* npm install
 
 Setup a PostGIS database with OSM data (not covered in this README)
 
@@ -17,7 +14,14 @@ Copy settings.js.example to settings.js and edit user name, password and databas
 
 Edit table prefix if needed.
 
+Run:
+
+    node app.js
 
 Development dependencies:
 
-* npm install -g mocha
+* npm install --dev -g
+
+Run as developer:
+
+* nodemon app.js

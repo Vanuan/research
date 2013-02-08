@@ -27,11 +27,12 @@
     "maps"
   ],
   "dependencies" : {
-    "pg"           :  "*",
-    "squel"        :  "*",
-    "proj4js"      :  "*",
-    "proj4js-defs" :  "*",
-    "connect"      :  "*"
+    "any-db"       : "*",
+    "pg"           : "*",
+    "squel"        : "*",
+    "proj4js"      : "*",
+    "proj4js-defs" : "*",
+    "connect"      : "*"
   },
   "analyze": false,
   "devDependencies": {
