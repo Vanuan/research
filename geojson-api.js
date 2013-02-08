@@ -82,12 +82,12 @@ function as_geo_json_field(field, precision, as) {
 }
 
 function intersection(bbox) {
-  var intersection = ('ST_Intersection(way,' + bbox + ')');
+  var intersection = 'way'; //('ST_Intersection(way,' + bbox + ')');
   return intersection;
 }
 
 function point_on() {
-  var intersection = 'ST_PointOnSurface(way)';
+  var intersection = 'way';//'ST_PointOnSurface(way)';
   return intersection;
 }
 
