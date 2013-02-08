@@ -16,7 +16,7 @@ var conString = settings.connectionString;
 var prefix = settings.table_prefix;
 var logger = require('./logger');
 var proj4 = require('proj4js');
-logger.debugLevel = logger.DEBUG;
+logger.debugLevel = logger.WARN;
 logger.info('settings: ', settings)
 
 var client = anydb.createPool(conString.replace('tcp', 'postgres'),
@@ -149,9 +149,9 @@ function bbox_to_projection(bbox, projection) {
   if (projection != 'EPSG:900913') {
     logger.error('not supported projection');
   }
-  proj = new proj4.Proj("EPSG:900913");
-  upper_left = proj4.transform(proj4.WGS84, proj, new proj4.Point([bbox[0], bbox[3]]));
-  bottom_right = proj4.transform(proj4.WGS84, proj, new proj4.Point(bbox[2], bbox[1]));
+  var proj = new proj4.Proj("EPSG:900913");
+  var upper_left = proj4.transform(proj4.WGS84, proj, new proj4.Point([bbox[0], bbox[3]]));
+  var bottom_right = proj4.transform(proj4.WGS84, proj, new proj4.Point(bbox[2], bbox[1]));
 
   return [upper_left.x,
           bottom_right.y,
@@ -316,5 +316,10 @@ var serve_geo_json = function (request, response) {
       response.end('{error}');
     }
   };
+
+
+exports.get_tile_data = GrabData;
+
+
 
 exports.serve_geo_json = serve_geo_json;
