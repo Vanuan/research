@@ -268,7 +268,7 @@ function sendResponse(headers, response, responseBuffer) {
 var http = require('http');
 var zlib = require('zlib');
 
-var db_client = create_client();
+var db_client = null;
 
 var serve_geo_json = function (request, response) {
     if (db_client == null) {
