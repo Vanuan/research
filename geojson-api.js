@@ -114,43 +114,47 @@ function execute_query(prefix, tags, bounds, client, on_result) {
   var bbox = bbox_to_projection(bounds.bounds, 'EPSG:900913');
   var intscalefactor = 100;
   var query = prepare_polygon_query(prefix, tags, bbox, bounds.z, intscalefactor);
-  client.query(query, function(err, result){
-    if (err) {
-      logger.error('err:' + err);
-      return;
-    } else {
-      logger.info('query successfull');
-    }
-    var featureCollection = new FeatureCollection();
-    for(var i = 0; i < result.rows.length; i++){
-      var cols = result.rows[i];
-      var way = JSON.parse(result.rows[i].way);
-      var reprpoint = result.rows[i].reprpoint;
-      delete result.rows[i].way;
-      delete result.rows[i].reprpoint;
-      if (way.type == 'GeometryCollection') {
-        continue;
-      }
-      var properties = {};
-      for(property in cols) {
-        if (cols[property]) {
-          properties[property] = cols[property];
-        }
-      }
-      // logger.debug('row '+ i + ' ' + way)
-      var feature = way;
-      logger.debug(way.coordinates);
-      feature.properties = properties;
-      if (reprpoint) {
-        feature.reprpoint = JSON.parse(reprpoint)["coordinates"];
-      }
-      featureCollection.features.push(feature);
-    }
-    featureCollection.bbox = bounds.bounds;
-    featureCollection.granularity = intscalefactor;
-
-    on_result.send(featureCollection, bounds.z, bounds.x, bounds.y);
+  client.query(query, function (err, result) {
+    on_query_result(err, result, on_result, bounds, intscalefactor);
   });
+}
+
+function on_query_result(err, result, on_result, bounds, intscalefactor) {
+  if (err) {
+    logger.error('err:' + err);
+    return;
+  } else {
+    logger.info('query successfull');
+  }
+  var featureCollection = new FeatureCollection();
+  for(var i = 0; i < result.rows.length; i++){
+    var cols = result.rows[i];
+    var way = JSON.parse(result.rows[i].way);
+    var reprpoint = result.rows[i].reprpoint;
+    delete result.rows[i].way;
+    delete result.rows[i].reprpoint;
+    if (way.type == 'GeometryCollection') {
+      continue;
+    }
+    var properties = {};
+    for(property in cols) {
+      if (cols[property]) {
+        properties[property] = cols[property];
+      }
+    }
+    // logger.debug('row '+ i + ' ' + way)
+    var feature = way;
+    logger.debug(way.coordinates);
+    feature.properties = properties;
+    if (reprpoint) {
+      feature.reprpoint = JSON.parse(reprpoint)["coordinates"];
+    }
+    featureCollection.features.push(feature);
+  }
+  featureCollection.bbox = bounds.bounds;
+  featureCollection.granularity = intscalefactor;
+
+  on_result.send(featureCollection, bounds.z, bounds.x, bounds.y);
 }
 
 
