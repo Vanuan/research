@@ -12,15 +12,22 @@ catch(e) {
                   "table_prefix": "planet_osm"
                  };
 }
+
 var conString = settings.connectionString;
+var create_client = function () {
+  var client = anydb.createPool(conString.replace('tcp', 'postgres'),
+                                {min: 2, max: 10});
+  return client;
+};
+exports.create_client = create_client;
+
 var prefix = settings.table_prefix;
 var logger = require('./logger');
 var proj4 = require('proj4js');
 logger.debugLevel = logger.WARN;
 logger.info('settings: ', settings)
 
-var client = anydb.createPool(conString.replace('tcp', 'postgres'),
-                              {min: 2, max: 10});
+var client = create_client();
 
 function pixel_size_at_zoom(z, l) {
   /*
