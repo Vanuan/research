@@ -21,14 +21,15 @@ var create_client = function () {
 };
 exports.create_client = create_client;
 
+var close_client = function (client) { client.close(); }
+exports.close_client = close_client;
+
 var prefix = settings.table_prefix;
 var logger = require('./logger');
 var proj4 = require('proj4js');
 logger.debugLevel = logger.WARN;
 logger.info('settings: ', settings)
 
-var client = create_client();
-exports.client = client;
 
 function pixel_size_at_zoom(z, l) {
   /*
@@ -267,8 +268,12 @@ function sendResponse(headers, response, responseBuffer) {
 var http = require('http');
 var zlib = require('zlib');
 
+var db_client = create_client();
 
 var serve_geo_json = function (request, response) {
+    if (db_client == null) {
+      db_client = create_client();
+    }
     var headers = {'Content-Type': 'application/javascript; charset=utf-8',
                    'Cache-Control': 'public',
                    'Last-Modified': new Date('2011','01','01').toUTCString()}
@@ -317,7 +322,7 @@ var serve_geo_json = function (request, response) {
         response.end('');
         return;
       } else {
-        GrabData(tile_id, client, res);
+        GrabData(tile_id, db_client, res);
       }
     } else {
       response.writeHead(200, {'Content-Type': 'application/javascript'});
