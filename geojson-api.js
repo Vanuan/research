@@ -28,6 +28,7 @@ logger.debugLevel = logger.WARN;
 logger.info('settings: ', settings)
 
 var client = create_client();
+exports.client = client;
 
 function pixel_size_at_zoom(z, l) {
   /*
@@ -247,7 +248,7 @@ function get_bounds(tile_id) {
     return bbox;
 }
 
-function GrabData(tile_id, res){
+function GrabData(tile_id, client, res){
   var bounds = get_bounds(tile_id);
   var tags =['"addr:housenumber"', 'name', 'building', 'amenity'];
   execute_query(prefix, tags, bounds, client, res);
@@ -316,7 +317,7 @@ var serve_geo_json = function (request, response) {
         response.end('');
         return;
       } else {
-        GrabData(tile_id, res);
+        GrabData(tile_id, client, res);
       }
     } else {
       response.writeHead(200, {'Content-Type': 'application/javascript'});
