@@ -1,4 +1,4 @@
-var geojson_api = require("./geojson-api");
+var geojson_api = require("../geojson-api");
 var wait = { 'send': function(data) {}};
 var client = geojson_api.create_client();
 
