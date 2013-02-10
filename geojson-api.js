@@ -16,7 +16,7 @@ catch(e) {
 var conString = settings.connectionString;
 var create_client = function () {
   var client = anydb.createPool(conString.replace('tcp', 'postgres'),
-                                {min: 2, max: 10});
+                                {min: 10, max: 10});
   return client;
 };
 exports.create_client = create_client;
