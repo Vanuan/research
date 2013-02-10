@@ -129,20 +129,19 @@ function on_query_result(err, result, on_result, bounds, intscalefactor) {
   var featureCollection = new FeatureCollection();
   for(var i = 0; i < result.rows.length; i++){
     var cols = result.rows[i];
-    var way = JSON.parse(result.rows[i].way);
-    var reprpoint = result.rows[i].reprpoint;
-    delete result.rows[i].way;
-    delete result.rows[i].reprpoint;
+    var way = JSON.parse(cols.way);
+    var reprpoint = cols.reprpoint;
     if (way.type == 'GeometryCollection') {
       continue;
     }
     var properties = {};
     for(property in cols) {
-      if (cols[property]) {
-        properties[property] = cols[property];
+      if (property == 'way' || property == 'reprpoint' ||
+          cols[property] == null) {
+        continue;
       }
+      properties[property] = cols[property];
     }
-    // logger.debug('row '+ i + ' ' + way)
     var feature = way;
     logger.debug(way.coordinates);
     feature.properties = properties;
@@ -154,9 +153,11 @@ function on_query_result(err, result, on_result, bounds, intscalefactor) {
   featureCollection.bbox = bounds.bounds;
   featureCollection.granularity = intscalefactor;
 
-  on_result.send(featureCollection, bounds.z, bounds.x, bounds.y);
+  setTimeout(function() { 
+    on_result.send(featureCollection, bounds.z, bounds.x, bounds.y);
+  }, 5);
 }
-
+exports.on_query_result = on_query_result;
 
 function bbox_to_projection(bbox, projection) {
   if (projection != 'EPSG:900913') {
@@ -264,8 +265,10 @@ function FeatureCollection(){
 }
 
 function sendResponse(headers, response, responseBuffer) {
-  response.writeHead(200, headers);
-  response.end(responseBuffer);
+  setTimeout(function() {
+    response.writeHead(200, headers);
+    response.end(responseBuffer);
+  }, 2);
 }
 
 
@@ -274,6 +277,38 @@ var zlib = require('zlib');
 
 var db_client = null;
 
+    var res = {};
+    res.send = function(data, z, x, y) {
+      logger.info(data.features.length + " features in database");
+      var responseString = 'onKothicDataResponse(' +  JSON.stringify(data) +
+                   ',' + z + ',' + x + ',' + y +
+                   ');';
+      var acceptEncoding = res.request.headers['accept-encoding'];
+      if (!acceptEncoding) {
+        acceptEncoding = '';
+      }
+      // Note: this is not a conformant accept-encoding parser.
+      // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3
+      if (acceptEncoding.match(/\bdeflate\b/)) {
+        res.headers['content-encoding'] = 'deflate';
+        res.response.writeHead(200, res.headers);
+        zlib.deflate(responseString, function(err, responseBuffer) {
+          if (!err) {
+            sendResponse(res.headers, res.response, responseBuffer);
+          }
+        });
+      } else if (acceptEncoding.match(/\bgzip\b/)) {
+        res.headers['content-encoding'] = 'gzip';
+        zlib.gzip(responseString, function(err, responseBuffer) {
+          if (!err) {
+            sendResponse(res.headers, res.response, responseBuffer);
+          }
+        });
+      } else {
+        sendResponse(res.headers, res.response, responseString);
+      }
+    };
+
 var serve_geo_json = function (request, response) {
     if (db_client == null) {
       db_client = create_client();
@@ -281,38 +316,6 @@ var serve_geo_json = function (request, response) {
     var headers = {'Content-Type': 'application/javascript; charset=utf-8',
                    'Cache-Control': 'public',
                    'Last-Modified': new Date('2011','01','01').toUTCString()}
-    var res = {};
-    res.send = function(data, z, x, y) {
-      logger.info(data.features.length + " features in database");
-      // logger.debug(data);
-      var responseString = 'onKothicDataResponse(' +  JSON.stringify(data) +
-                   ',' + z + ',' + x + ',' + y +
-                   ');';
-      var acceptEncoding = request.headers['accept-encoding'];
-      if (!acceptEncoding) {
-        acceptEncoding = '';
-      }
-      // Note: this is not a conformant accept-encoding parser.
-      // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3
-      if (acceptEncoding.match(/\bdeflate\b/)) {
-        headers['content-encoding'] = 'deflate';
-        response.writeHead(200, headers);
-        zlib.deflate(responseString, function(err, responseBuffer) {
-          if (!err) {
-            sendResponse(headers, response, responseBuffer);
-          }
-        });
-      } else if (acceptEncoding.match(/\bgzip\b/)) {
-        headers['content-encoding'] = 'gzip';
-        zlib.gzip(responseString, function(err, responseBuffer) {
-          if (!err) {
-            sendResponse(headers, response, responseBuffer);
-          }
-        });
-      } else {
-        sendResponse(headers, response, responseString);
-      }
-    };
     // /vtile/{z}/{x}/{y}.js
     var regex = /.*vtile\/(\d+\/\d+\/\d+).*/
     var tile_id = request.url.match(regex)
@@ -326,6 +329,9 @@ var serve_geo_json = function (request, response) {
         response.end('');
         return;
       } else {
+        res.request = request;
+        res.headers = headers;
+        res.response = response;
         GrabData(tile_id, db_client, res);
       }
     } else {
