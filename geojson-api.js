@@ -113,11 +113,12 @@ function transcale(to_scale, bbox_p, intscalefactor) {
 function execute_query(prefix, tags, bounds, client, on_result) {
   var bbox = bbox_to_projection(bounds.bounds, 'EPSG:900913');
   var intscalefactor = 100;
-  var query = prepare_polygon_query(prefix, tags, bbox, bounds.z, intscalefactor);
-//  client.query(query, function (err, result) {
+//  var query = prepare_polygon_query(prefix, tags, bbox, bounds.z, intscalefactor);
+  var query = "ST_AsGeoJSON(way) FROM planet_osm_polygon;";
+  client.query(query, function (err, result) {
     on_result.send();
     //on_query_result(err, result, on_result, bounds, intscalefactor);
-//  });
+  });
 }
 
 function on_query_result(err, result, on_result, bounds, intscalefactor) {
