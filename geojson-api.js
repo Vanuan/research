@@ -264,8 +264,11 @@ function GrabData(tile_id, client, res){
   var tags =['addr:housenumber', 'name', 'building', 'amenity'];
 //  execute_query(prefix, tags, bounds, client, res);
   execute_query(prefix, tags, bounds, client, {
-    'send': function() {
-      var result = 'onKothicDataResponse({"features":[{"type":"Polygon","coordinates":[[[8.63,73.2],[30.51,164.21],[57.83,157.64],[35.94,66.63],[8.63,73.2]]],"properties":{"addr:housenumber":"148а/2","building":"yes"},"reprpoint":[[[8.63,73.2],[30.51,164.21],[57.83,157.64],[35.94,66.63],[8.63,73.2]]]},{"type":"Polygon","coordinates":[[[-15.37,-16.27],[6.99,63.12],[33.45,55.68],[11.08,-23.71],[-15.37,-16.27]]],"properties":{"addr:housenumber":"148а/1","building":"yes"},"reprpoint":[[[-15.37,-16.27],[6.99,63.12],[33.45,55.68],[11.08,-23.71],[-15.37,-16.27]]]}],"bbox":[30.7287597656,46.4033026733,30.7294464111,46.4037761667],"granularity":100},' + z + ',' + x + ',' + y +');'
+    'send': function(data, z, x, y) {
+      var result = 'onKothicDataResponse(' +  JSON.stringify(data) +
+                   ',' + z + ',' + x + ',' + y +
+                   ');';
+//      var result = 'onKothicDataResponse({"features":[{"type":"Polygon","coordinates":[[[8.63,73.2],[30.51,164.21],[57.83,157.64],[35.94,66.63],[8.63,73.2]]],"properties":{"addr:housenumber":"148а/2","building":"yes"},"reprpoint":[[[8.63,73.2],[30.51,164.21],[57.83,157.64],[35.94,66.63],[8.63,73.2]]]},{"type":"Polygon","coordinates":[[[-15.37,-16.27],[6.99,63.12],[33.45,55.68],[11.08,-23.71],[-15.37,-16.27]]],"properties":{"addr:housenumber":"148а/1","building":"yes"},"reprpoint":[[[-15.37,-16.27],[6.99,63.12],[33.45,55.68],[11.08,-23.71],[-15.37,-16.27]]]}],"bbox":[30.7287597656,46.4033026733,30.7294464111,46.4037761667],"granularity":100},' + z + ',' + x + ',' + y +');'
   response.write(result);
   response.end();
     }
