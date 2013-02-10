@@ -43,11 +43,10 @@ function prepare_polygon_query(table_prefix, tags, bounds, zoom, intscalefactor)
   var table = table_prefix + '_polygon';
   var precision = '2'; // max decimal digits
   var adp = 'true'; // ??? tags? filter?
-  var names = tags.join();
+  var names = '"' + tags.join('","') + '"';
   var vec = 'vec';
   var geomcolumn = 'way';
   var pxtolerance = 1.8;
-
 
   logger.debug(bounds)
   var bbox = "SetSRID('BOX3D(" + bounds[0] + " " + bounds[1] + "," +
@@ -65,14 +64,14 @@ function prepare_polygon_query(table_prefix, tags, bounds, zoom, intscalefactor)
   var trans2 = transcale(point, bounds, intscalefactor);
   var skip_without_tags = squel.expr();
   for (var tag in tags) {
-    skip_without_tags = skip_without_tags.or(tags[tag] + " != ''");
+    skip_without_tags = skip_without_tags.or("'" + tags[tag] + "' != ''");
   }
   q = q.where(skip_without_tags);
   var union = squel.select().field('ST_Union(way) as way').field(names);
   union = union.from('(' + q.toString() + ') p').group(names);
   var simplify = squel.select().field("(ST_Dump(ST_Multi(ST_SimplifyPreserveTopology(ST_Buffer(way,-2),2)))).geom as way").field(names);
   simplify = simplify.from('(' + union.toString() + ') as p');
-  q = as_geo_json(trans1, trans2, simplify.toString(), precision, tags);
+  q = as_geo_json(trans1, trans2, simplify.toString(), precision, names);
   logger.debug(q);
   return q;
 }
@@ -81,7 +80,7 @@ function as_geo_json(field1, field2, from_query, precision, fields) {
   var q = squel.select();
   q = q.field(as_geo_json_field(field1, precision, 'way'));
   q = q.field(as_geo_json_field(field2, precision, 'reprpoint'));
-  q = q.field(fields.join());
+  q = q.field(fields);
   q = q.from('(' + from_query + ') p');
   return q.toString();
 }
@@ -113,13 +112,10 @@ function transcale(to_scale, bbox_p, intscalefactor) {
 function execute_query(prefix, tags, bounds, client, on_result) {
   var bbox = bbox_to_projection(bounds.bounds, 'EPSG:900913');
   var intscalefactor = 100;
-//  var query = prepare_polygon_query(prefix, tags, bbox, bounds.z, intscalefactor);
-//  var query = "ST_AsGeoJSON(way) FROM planet_osm_polygon;";
-  var query = "ST_AsGeoJSON((ST_TransScale(ST_ForceRHR((way)),20037393.687242553,-20033839.365384713,2.6165333200839087,2.6165262166577854)), 2) as way, ST_AsGeoJSON((ST_TransScale(ST_ForceRHR((way)),20037393.687242553,-20033839.365384713,2.6165333200839087,2.6165262166577854)), 2) as reprpoint, 'addr:housenumber',name,building,amenity FROM (SELECT (ST_Dump(ST_Multi(ST_SimplifyPreserveTopology(ST_Buffer(way,-2),2)))).geom as way, 'addr:housenumber',name,building,amenity FROM (SELECT ST_Union(way) as way, 'addr:housenumber',name,building,amenity FROM (SELECT ST_Buffer(way, 1) AS 'way', 'addr:housenumber',name,building,amenity FROM planet_osm_polygon WHERE (true AND way && SetSRID('BOX3D(-20037393.687242553 20033839.365384713,-20037355.46873441 20033877.583996613)'::box3d,900913) AND way_area > 0.5555555555555556) AND ('addr:housenumber' != '' OR name != '' OR building != '' OR amenity != '')) p GROUP BY 'addr:housenumber',name,building,amenity) as p) p;";
-
+  var query = prepare_polygon_query(prefix, tags, bbox, bounds.z, intscalefactor);
   client.query(query, function (err, result) {
-    on_result.send();
-    //on_query_result(err, result, on_result, bounds, intscalefactor);
+          //     on_result.send();
+    on_query_result(err, result, on_result, bounds, intscalefactor);
   });
 }
 
@@ -157,9 +153,9 @@ function on_query_result(err, result, on_result, bounds, intscalefactor) {
   featureCollection.bbox = bounds.bounds;
   featureCollection.granularity = intscalefactor;
 
-  setTimeout(function() { 
+//  setTimeout(function() { 
     on_result.send(featureCollection, bounds.z, bounds.x, bounds.y);
-  }, 5);
+//  }, 5);
 }
 exports.on_query_result = on_query_result;
 
@@ -265,7 +261,7 @@ function GrabData(tile_id, client, res){
   var z = parseInt(tile_id.split('/')[0]);
   var x = parseInt(tile_id.split('/')[1]);
   var y = parseInt(tile_id.split('/')[2]);
-  var tags =['"addr:housenumber"', 'name', 'building', 'amenity'];
+  var tags =['addr:housenumber', 'name', 'building', 'amenity'];
 //  execute_query(prefix, tags, bounds, client, res);
   execute_query(prefix, tags, bounds, client, {
     'send': function() {
