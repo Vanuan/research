@@ -32,7 +32,8 @@
     "squel"        : "*",
     "proj4js"      : "*",
     "proj4js-defs" : "*",
-    "connect"      : "*"
+    "connect"      : "*",
+    "webkit-devtools-agent" : "*"
   },
   "analyze": false,
   "devDependencies": {

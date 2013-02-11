@@ -1,3 +1,4 @@
+var agent = require('webkit-devtools-agent');
 var geo_json = require('./geojson-api');
 var logger = require('./logger');
 var connect = require('connect');
