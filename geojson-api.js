@@ -119,7 +119,6 @@ function execute_query(prefix, tags, bounds, client, on_result) {
 }
 
 function on_query_result(err, result, on_result, bounds, intscalefactor) {
-  process.nextTick(function () {
   if (err) {
     logger.error('err:' + err);
     return;
@@ -153,10 +152,9 @@ function on_query_result(err, result, on_result, bounds, intscalefactor) {
   featureCollection.bbox = bounds.bounds;
   featureCollection.granularity = intscalefactor;
 
-  process.nextTick(function () {
+//  process.nextTick(function () {
     on_result.send(featureCollection, bounds.z, bounds.x, bounds.y)
-  });
-  });
+//  });
 }
 exports.on_query_result = on_query_result;
 
@@ -270,28 +268,36 @@ function GrabData(tile_id, client, res){
                    ',' + z + ',' + x + ',' + y +
                    ');';
 //      var result = 'onKothicDataResponse({"features":[{"type":"Polygon","coordinates":[[[8.63,73.2],[30.51,164.21],[57.83,157.64],[35.94,66.63],[8.63,73.2]]],"properties":{"addr:housenumber":"148а/2","building":"yes"},"reprpoint":[[[8.63,73.2],[30.51,164.21],[57.83,157.64],[35.94,66.63],[8.63,73.2]]]},{"type":"Polygon","coordinates":[[[-15.37,-16.27],[6.99,63.12],[33.45,55.68],[11.08,-23.71],[-15.37,-16.27]]],"properties":{"addr:housenumber":"148а/1","building":"yes"},"reprpoint":[[[-15.37,-16.27],[6.99,63.12],[33.45,55.68],[11.08,-23.71],[-15.37,-16.27]]]}],"bbox":[30.7287597656,46.4033026733,30.7294464111,46.4037761667],"granularity":100},' + z + ',' + x + ',' + y +');'
-/*      function writeChunk() {
-        if (current < chunkCount) {
-            current++;
 
-            if (response.write(longBuffer)) {
-                process.nextTick(writeChunk);
-            } else {
-                response.one('drain', writeChunk);
-            }
-        } else {
-            response.end();
-        }
-    }*/
-  response.write(result);
-  response.end();
+      postponedWrite(new Buffer(result), 0, response, 
+      function() {
+        response.end();
+      });
     }
   });
+}
 
-//  res.request = request;
-//  res.headers = headers;
-//  res.response = response;
-
+var chunkSize = 2000;
+function postponedWrite(buffer, current, stream, callback) {
+  if (current < buffer.length) {
+      var end = current;
+      if (current + chunkSize < buffer.length) {
+        end += chunkSize;
+      } else {
+        end = buffer.length;
+      }
+      var writeChunk = function () {
+        current = end;
+        postponedWrite(buffer, current, stream, callback);
+      };
+      if (stream.write(buffer.slice(current, end))) {
+         process.nextTick(writeChunk);
+      } else {
+        stream.once('drain', writeChunk);
+      }
+  } else {
+    stream.end();
+  }
 }
 
 function FeatureCollection(){
