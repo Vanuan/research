@@ -1,0 +1,90 @@
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+
+</style>
+<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+<script>
+function init() {
+  var links = [
+              {href: 'http://overpass-api.de/turbo/map.html?Q=<union>%20<query%20type%3D"way">%20<has-kv%20k%3D"railway"%20v%3D"tram"%2F>%20<bbox-query%20s%3D"46.30947000550115"%20w%3D"30.536499023437504"%20n%3D"46.66875826244202"%20e%3D"31.079635620117188"%2F>%20<%2Fquery>%20<query%20type%3D"node">%20<has-kv%20k%3D"railway"%20v%3D"tram_stop"%2F>%20<bbox-query%20s%3D"46.30947000550115"%20w%3D"30.536499023437504"%20n%3D"46.66875826244202"%20e%3D"31.079635620117188"%2F>%20<%2Fquery>%20<query%20type%3D"relation">%20<has-kv%20k%3D"type"%20v%3D"route"%2F>%20<has-kv%20k%3D"route"%20v%3D"tram"%2F>%20<bbox-query%20s%3D"46.30947000550115"%20w%3D"30.536499023437504"%20n%3D"46.66875826244202"%20e%3D"31.079635620117188"%2F>%20<%2Fquery>%20<%2Funion>%20<union>%20<item%2F>%20<recurse%20type%3D"down"%2F>%20<%2Funion>%20<print%20mode%3D"meta"%2F>%20', label: 'Трамваи Одессы'},
+              {href: 'http://overpass-api.de/turbo/map.html?Q=<union>%20<query%20type%3D"node">%20<has-kv%20k%3D"amenity"%20v%3D"atm"%2F>%20<has-kv%20k%3D"operator"%20v%3D"УкрСиббанк"%2F>%20<bbox-query%20s%3D"46.282902242821145"%20w%3D"30.54336547851562"%20n%3D"46.64236537751267"%20e%3D"31.086502075195312"%2F>%20<%2Fquery>%20<query%20type%3D"node">%20<has-kv%20k%3D"amenity"%20v%3D"atm"%2F>%20<has-kv%20k%3D"operator"%20v%3D"Euronet"%2F>%20<bbox-query%20s%3D"46.282902242821145"%20w%3D"30.54336547851562"%20n%3D"46.64236537751267"%20e%3D"31.086502075195312"%2F>%20<%2Fquery>%20<query%20type%3D"node">%20<has-kv%20k%3D"amenity"%20v%3D"bank"%2F>%20<has-kv%20k%3D"name"%20v%3D"УкрСиббанк"%2F>%20<bbox-query%20s%3D"46.282902242821145"%20w%3D"30.54336547851562"%20n%3D"46.64236537751267"%20e%3D"31.086502075195312"%2F>%20<%2Fquery>%20<query%20type%3D"area">%20<has-kv%20k%3D"amenity"%20v%3D"bank"%2F>%20<has-kv%20k%3D"name"%20v%3D"УкрСиббанк"%2F>%20<bbox-query%20s%3D"46.282902242821145"%20w%3D"30.54336547851562"%20n%3D"46.64236537751267"%20e%3D"31.086502075195312"%2F>%20<%2Fquery>%20<%2Funion>%20<print%2F>',
+               label: 'Отделения УкрСибБанк Одессы'}
+          ],
+          i, link;
+  for (i=0; i < links.length; ++i) {
+    link = addLink(links[i]);
+  }
+}
+
+function addLink(link) {
+  $("#template").clone().find('a').html(link.label).
+  attr("href", link.href).attr("target", "map").end().
+  removeAttr('style').removeClass("template").appendTo($('#links'));
+}
+$(document).ready(function() {
+    init();
+});
+
+/*
+<union>
+<query type="node">
+  <has-kv k="amenity" v="atm"/>
+  <has-kv k="operator" v="УкрСиббанк"/>
+  <bbox-query {{bbox}}/>
+</query>
+<query type="node">
+  <has-kv k="amenity" v="atm"/>
+  <has-kv k="operator" v="Euronet"/>
+  <bbox-query {{bbox}}/>
+</query>
+<query type="node">
+  <has-kv k="amenity" v="bank"/>
+  <has-kv k="name" v="УкрСиббанк"/>
+  <bbox-query {{bbox}}/>
+</query>
+<query type="area">
+  <has-kv k="amenity" v="bank"/>
+  <has-kv k="name" v="УкрСиббанк"/>
+  <bbox-query {{bbox}}/>
+</query>
+</union>
+
+<print/>
+*/
+
+</script>
+</head>
+<body>
+<!--
+<h2>Город</h2>
+
+Одесса
+
+<h2>Банки</h2>
+<ul>
+<li>УкрСиббанк</li>
+</ul>
+
+<h2>Банкоматы</h2>
+<ul>
+<li>УкрСиббанк</li>
+<li>Euronet</li>
+</ul>
+<ul>
+<li>с возможностью внесения наличных</li>
+</ul>
+-->
+<li id="template" style="display:none;">
+  <a href='#'></a>
+</li>
+
+<div id="links"></div>
+<a href='
+' target="map">
+</a>
+<br/>
+<iframe id='map' width="805" height="550" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src=''></frame>
+</body>
+</html>
